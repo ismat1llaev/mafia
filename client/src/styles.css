@@ -155,7 +155,7 @@ svg {
   z-index: -1;
   background:
     radial-gradient(130% 62% at 50% -12%, var(--wash, rgba(90, 110, 160, 0.16)), transparent 68%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+    linear-gradient(180deg, rgba(10, 12, 17, 0.42) 0%, rgba(6, 7, 10, 0.74) 56%, var(--bg-deep) 100%);
   transition: background 700ms var(--ease);
 }
 
@@ -1506,13 +1506,35 @@ b {
  * идут кнопки и поле кода, которым нужен контраст.
  */
 
-.app.on-home::after {
+/**
+ * Внутри партии — верх того же снимка: люстра и стена с масками, без
+ * клубного стола. Стол оттуда встал бы ровно за игровым кругом и
+ * превратил бы места в кашу. Полоса сверху растворяется к середине,
+ * ниже идёт ровный тёмный фон, чтобы места и таймер читались.
+ */
+.app::after {
   content: '';
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 56vh;
   z-index: -2;
-  background: url('./bg.jpg') center 42% / cover no-repeat;
+  background: url('./bg-room.jpg') center top / cover no-repeat;
+  opacity: 0.85;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 38%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 38%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
+}
+
+/* На главной — тот же клуб, но кадр целиком и в полную силу */
+.app.on-home::after {
+  inset: 0;
+  height: auto;
+  background: url('./bg.jpg') center 42% / cover no-repeat;
+  opacity: 1;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 /**
