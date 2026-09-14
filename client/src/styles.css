@@ -1511,17 +1511,22 @@ b {
   position: fixed;
   inset: 0;
   z-index: -2;
-  background: url('./bg.jpg') center / cover no-repeat;
+  background: url('./bg.jpg') center 42% / cover no-repeat;
   pointer-events: none;
 }
 
+/**
+ * Вуаль слабее, чем кажется нужным: снимок уже притемнён в самом файле.
+ * Складывать одно с другим в полную силу нельзя — получится серая каша
+ * вместо комнаты.
+ */
 .app.on-home::before {
   background: linear-gradient(
     180deg,
-    rgba(6, 7, 10, 0.2) 0%,
-    rgba(6, 7, 10, 0.34) 42%,
-    rgba(6, 7, 10, 0.6) 78%,
-    rgba(6, 7, 10, 0.8) 100%
+    rgba(6, 7, 10, 0.28) 0%,
+    rgba(6, 7, 10, 0.2) 34%,
+    rgba(6, 7, 10, 0.38) 72%,
+    rgba(6, 7, 10, 0.62) 100%
   );
 }
 
@@ -1584,6 +1589,12 @@ b {
 /* Поверх фотографии мелкий текст теряется — лёгкая тень возвращает его */
 .app.on-home .screen {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+/* Логотип приходится на люстру, а она пёстрая: тень отделяет его от фона */
+.app.on-home .brand-logo {
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.85))
+    drop-shadow(0 0 26px rgba(0, 0, 0, 0.6));
 }
 
 .app.on-home .btn-note,
