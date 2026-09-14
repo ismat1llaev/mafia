@@ -1495,35 +1495,102 @@ b {
 /* ─────────── фоновая фотография ─────────── */
 
 /**
- * Снимок стоит шапкой вверху главной и растворяется к середине экрана.
+ * Снимок во весь экран главной, поверхности над ним — стеклянные.
  *
  * Только на главной: класс on-home вешает App.jsx, когда партии нет.
- * Внутри игры этот же снимок ложится круглым столом ровно за игровым
+ * Внутри игры тот же снимок ложится круглым столом ровно за игровым
  * кругом, и места становится не разобрать.
  *
- * Слой лежит ниже фазовой вуали (z-index -2 против -1), поэтому вуаль
- * здесь приходится делать полупрозрачной — сплошная закрасила бы снимок.
+ * Вуаль над фотографией нужна, иначе текст тонет в светлых местах карты.
+ * Держим её слабой сверху и плотнее к низу: вверху снимка дымка, внизу
+ * идут кнопки и поле кода, которым нужен контраст.
  */
 
 .app.on-home::after {
   content: '';
   position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 62vh;
+  inset: 0;
   z-index: -2;
-  background: url('./bg.jpg') center 16% / cover no-repeat;
-  opacity: 0.66;
+  background: url('./bg.jpg') center / cover no-repeat;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 28%, rgba(0, 0, 0, 0.4) 64%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 28%, rgba(0, 0, 0, 0.4) 64%, transparent 100%);
 }
 
 .app.on-home::before {
-  background:
-    radial-gradient(130% 62% at 50% -12%, var(--wash, rgba(90, 110, 160, 0.16)), transparent 68%),
-    linear-gradient(180deg, rgba(10, 12, 17, 0.3) 0%, rgba(6, 7, 10, 0.9) 54%, var(--bg-deep) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(6, 7, 10, 0.2) 0%,
+    rgba(6, 7, 10, 0.34) 42%,
+    rgba(6, 7, 10, 0.6) 78%,
+    rgba(6, 7, 10, 0.8) 100%
+  );
+}
+
+/**
+ * Стекло: сильное размытие подложки плюс тонкая светлая рамка. Без рамки
+ * прозрачная кнопка растворяется в фотографии и перестаёт читаться кнопкой.
+ */
+.app.on-home .btn {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+}
+
+.app.on-home .btn-primary {
+  background: rgba(226, 59, 78, 0.58);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.app.on-home .btn-primary:active:not(:disabled) {
+  background: rgba(239, 74, 93, 0.72);
+}
+
+.app.on-home .btn-ghost {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.app.on-home .hero-ic {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.app.on-home .btn-bots .hero-ic,
+.app.on-home .btn-rooms .hero-ic {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.app.on-home .card,
+.app.on-home .stat-tile {
+  background: rgba(8, 10, 15, 0.4);
+  border-color: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
+.app.on-home .input {
+  background: rgba(0, 0, 0, 0.34);
+  border-color: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.app.on-home .lang-switch {
+  background: rgba(8, 10, 15, 0.46);
+  border-color: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Поверх фотографии мелкий текст теряется — лёгкая тень возвращает его */
+.app.on-home .screen {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+.app.on-home .btn-note,
+.app.on-home .muted,
+.app.on-home .dim,
+.app.on-home .label {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* ─────────── доступность ─────────── */
