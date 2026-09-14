@@ -36,19 +36,23 @@ jobs:
             exit 0
           fi
 
-          # Лишний пробел или перенос строки при вставке ломают ссылку
-          HOOK=$(printf '%s' "$HOOK" | tr -d '[:space:]')
+          # Из вставленного берём саму ссылку Deploy Hook: при копировании
+          # к ней легко прихватить пробел, перенос строки или соседний текст
+          URL=$(printf '%s' "$HOOK" | tr -d '[:space:]' \
+            | grep -oE 'https://api[.]render[.]com/deploy/srv-[A-Za-z0-9]+[?]key=[A-Za-z0-9_-]+' | head -1 || true)
 
-          # Частая ошибка — вставить не ту ссылку: адрес сервиса или страницы GitHub
-          case "$HOOK" in
-            https://api.render.com/deploy/srv-*) ;;
-            *)
-              echo "::error::В секрете RENDER_DEPLOY_HOOK_URL не ссылка Deploy Hook. Нужная начинается с https://api.render.com/deploy/srv- — её копируют в Render: сервис → Settings → Deploy Hook"
-              exit 1
-              ;;
-          esac
+          if [ -z "$URL" ]; then
+            # Показываем только сайт из ссылки: вся ссылка может быть секретной
+            if [[ "$HOOK" =~ ^[[:space:]]*https?://([^/?#[:space:]]+) ]]; then
+              got="ссылка на ${BASH_REMATCH[1]##*@}"
+            else
+              got="вообще не ссылка"
+            fi
+            echo "::error::В секрете RENDER_DEPLOY_HOOK_URL не Deploy Hook, а $got. Нужная ссылка начинается с https://api.render.com/deploy/srv- и лежит в Render: сервис → Settings → Deploy Hook"
+            exit 1
+          fi
 
-          code=$(curl -sS -m 60 -o /tmp/body -w '%{http_code}' -X POST "$HOOK") || true
+          code=$(curl -sS -m 60 -o /tmp/body -w '%{http_code}' -X POST "$URL") || true
           echo "ответ Render: ${code:-нет}"
           head -c 300 /tmp/body 2>/dev/null || true
           echo
