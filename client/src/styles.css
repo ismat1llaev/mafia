@@ -1411,6 +1411,18 @@ b {
   box-shadow: var(--shadow);
 }
 
+/**
+ * Логотип игры. Рисунок подробный — шляпа, лацканы, галстук, — поэтому он
+ * стоит без плитки и крупнее значка: в рамке 72×72 детали слипались.
+ */
+.brand-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 2px;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+}
+
 .brand-mark.small {
   width: 54px;
   height: 54px;

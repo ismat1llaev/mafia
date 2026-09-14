@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { haptic } from '../tg.js';
 import { ChannelButton, RulesCard } from '../components.jsx';
 import { useT } from '../i18n.js';
-import { IconBook, IconBot, IconDoor, IconMasks, IconPlus } from '../icons.jsx';
+import { IconBook, IconBot, IconDoor, IconPlus } from '../icons.jsx';
+import logo from '../logo.png';
+import logo2x from '../logo@2x.png';
 
 /** Крупная кнопка-строка: значок, заголовок, пояснение, шеврон. */
 function HeroButton({ className = '', icon, title, note, onClick }) {
@@ -36,7 +38,14 @@ export function Home({ user, stats, onCreate, onJoin, onOpenRooms, onPlayBots, j
   return (
     <div className="screen">
       <div className="phase-head" style={{ paddingTop: 10 }}>
-        <div className="brand-mark"><IconMasks size={38} /></div>
+        <img
+          className="brand-logo"
+          src={logo}
+          srcSet={`${logo} 1x, ${logo2x} 2x`}
+          alt=""
+          width={96}
+          height={96}
+        />
         <h1>{t('app.title')}</h1>
         <div className="muted center">
           {user ? t('app.hello', { name: user.name }) : t('app.tagline')}
