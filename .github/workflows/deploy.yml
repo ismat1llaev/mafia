@@ -35,9 +35,22 @@ jobs:
             echo "::warning::Не задан секрет RENDER_DEPLOY_HOOK_URL — сборка на Render не запущена"
             exit 0
           fi
+
+          # Лишний пробел или перенос строки при вставке ломают ссылку
+          HOOK=$(printf '%s' "$HOOK" | tr -d '[:space:]')
+
+          # Частая ошибка — вставить не ту ссылку: адрес сервиса или страницы GitHub
+          case "$HOOK" in
+            https://api.render.com/deploy/srv-*) ;;
+            *)
+              echo "::error::В секрете RENDER_DEPLOY_HOOK_URL не ссылка Deploy Hook. Нужная начинается с https://api.render.com/deploy/srv- — её копируют в Render: сервис → Settings → Deploy Hook"
+              exit 1
+              ;;
+          esac
+
           code=$(curl -sS -m 60 -o /tmp/body -w '%{http_code}' -X POST "$HOOK") || true
           echo "ответ Render: ${code:-нет}"
-          cat /tmp/body 2>/dev/null || true
+          head -c 300 /tmp/body 2>/dev/null || true
           echo
           if [ "${code:-0}" -lt 200 ] || [ "${code:-0}" -ge 300 ]; then
             echo "::error::Render не принял запрос на сборку (код ${code:-нет})"
