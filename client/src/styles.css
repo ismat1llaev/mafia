@@ -1491,6 +1491,41 @@ b {
   opacity: 0.55;
 }
 
+
+/* ─────────── фоновая фотография ─────────── */
+
+/**
+ * Снимок стоит шапкой вверху главной и растворяется к середине экрана.
+ *
+ * Только на главной: класс on-home вешает App.jsx, когда партии нет.
+ * Внутри игры этот же снимок ложится круглым столом ровно за игровым
+ * кругом, и места становится не разобрать.
+ *
+ * Слой лежит ниже фазовой вуали (z-index -2 против -1), поэтому вуаль
+ * здесь приходится делать полупрозрачной — сплошная закрасила бы снимок.
+ */
+
+.app.on-home::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 62vh;
+  z-index: -2;
+  background: url('./bg.jpg') center 16% / cover no-repeat;
+  opacity: 0.66;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 28%, rgba(0, 0, 0, 0.4) 64%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 28%, rgba(0, 0, 0, 0.4) 64%, transparent 100%);
+}
+
+.app.on-home::before {
+  background:
+    radial-gradient(130% 62% at 50% -12%, var(--wash, rgba(90, 110, 160, 0.16)), transparent 68%),
+    linear-gradient(180deg, rgba(10, 12, 17, 0.3) 0%, rgba(6, 7, 10, 0.9) 54%, var(--bg-deep) 100%);
+}
+
 /* ─────────── доступность ─────────── */
 
 @media (prefers-reduced-motion: reduce) {

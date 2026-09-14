@@ -87,9 +87,12 @@ function Shell() {
   }
 
   const phase = state?.phase || 'lobby';
+  // Фоновая фотография только на главной: внутри партии круглый стол
+  // со снимка оказывается за игровым столом и мешает читать места
+  const onHome = !state && view === 'home';
 
   return (
-    <div className={`app phase-${phase}`}>
+    <div className={`app phase-${phase}${onHome ? ' on-home' : ''}`}>
       <LangSwitch />
 
       {status === 'offline' && (
