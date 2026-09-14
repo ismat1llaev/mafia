@@ -1,0 +1,1492 @@
+/**
+ * Оформление мини-аппа.
+ *
+ * Основа — тёмный нейтральный фон, тонкие светлые границы и ровно один
+ * акцентный цвет на экран. Свечения и градиентные заливки убраны нарочно:
+ * на маленьком экране они съедают контраст и делают текст мутным. Глубину
+ * даёт не подсветка, а три уровня поверхностей и аккуратная тень.
+ *
+ * Цвет несёт смысл, а не украшает: красный — мафия и главное действие,
+ * золотой — комиссар, бирюзовый — доктор, синий — мирные, фиолетовый — боты.
+ *
+ * Порядок разделов: токены → каркас → типографика → поверхности → кнопки →
+ * ввод → шапки → игроки → роли → журнал и чат → настройки → стол → прочее.
+ */
+
+:root {
+  /* Поверхности: три ступени вместо свечения */
+  --bg: #0a0c11;
+  --bg-deep: #06070a;
+  --surface: #13161d;
+  --surface-2: #1a1e27;
+  --surface-3: #232833;
+
+  /* Границы — волосяные линии светом, а не отдельным цветом:
+     так они одинаково работают на любой из ступеней */
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.15);
+  --line-faint: rgba(255, 255, 255, 0.05);
+
+  --text: #edf0f6;
+  --muted: #99a2b5;
+  --dim: #6a7285;
+
+  /* Акценты. Насыщенность сдержанная — чтобы текст поверх них читался */
+  --accent: #e23b4e;
+  --accent-hi: #ef4a5d;
+  --accent-soft: rgba(226, 59, 78, 0.14);
+  --accent-line: rgba(226, 59, 78, 0.38);
+
+  --mafia: #e8465a;
+  --mafia-soft: rgba(232, 70, 90, 0.14);
+
+  --sheriff: #e3a23c;
+  --sheriff-soft: rgba(227, 162, 60, 0.14);
+
+  --civil: #5b9bf8;
+  --civil-soft: rgba(91, 155, 248, 0.14);
+
+  --doctor: #33c6a4;
+  --doctor-soft: rgba(51, 198, 164, 0.14);
+
+  --good: #3dc97f;
+  --good-soft: rgba(61, 201, 127, 0.14);
+
+  --bot: #9b87f5;
+  --bot-soft: rgba(155, 135, 245, 0.14);
+
+  /* Радиусы: три размера, больше не нужно */
+  --r-lg: 20px;
+  --r: 14px;
+  --r-sm: 10px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.5);
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --spring: cubic-bezier(0.22, 1.15, 0.36, 1);
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  font-size: 15.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+}
+
+svg {
+  display: block;
+  flex: none;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+}
+
+/* ─────────── каркас ─────────── */
+
+.app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--safe-top) + 10px) 16px calc(var(--safe-bottom) + 20px);
+  max-width: 520px;
+  margin: 0 auto;
+  position: relative;
+  isolation: isolate;
+}
+
+/**
+ * Фаза красит воздух, а не элементы. Одно мягкое пятно сверху — этого
+ * хватает, чтобы ночь читалась как ночь, и при этом ничего не мешает тексту.
+ */
+.app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(130% 62% at 50% -12%, var(--wash, rgba(90, 110, 160, 0.16)), transparent 68%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+  transition: background 700ms var(--ease);
+}
+
+.app.phase-night { --wash: rgba(70, 96, 190, 0.2); }
+.app.phase-day { --wash: rgba(226, 152, 66, 0.16); }
+.app.phase-discussion { --wash: rgba(91, 155, 248, 0.14); }
+.app.phase-voting { --wash: rgba(150, 140, 200, 0.14); }
+.app.phase-revote { --wash: rgba(150, 140, 200, 0.16); }
+.app.phase-verdict { --wash: rgba(226, 59, 78, 0.18); }
+.app.phase-ended { --wash: rgba(61, 201, 127, 0.14); }
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  animation: screen-in 260ms var(--ease) both;
+}
+
+/* Экран с закреплённой кнопкой снизу не должен ею же и обрезаться */
+.screen:has(.sticky-bottom) {
+  padding-bottom: 78px;
+}
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ─────────── типографика ─────────── */
+
+h1 {
+  margin: 0;
+  font-size: 27px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+}
+
+p {
+  margin: 0 0 10px;
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
+
+b {
+  font-weight: 650;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.dim {
+  color: var(--dim);
+  font-size: 13px;
+}
+
+.center {
+  text-align: center;
+}
+
+/* Мелкая подпись капителью — ею размечены секции и метрики */
+.label {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* ─────────── поверхности ─────────── */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.spacer {
+  flex: 1;
+  min-height: 12px;
+}
+
+/* ─────────── кнопки ─────────── */
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--r);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  transition: transform 120ms var(--ease), background 160ms var(--ease),
+    border-color 160ms var(--ease), opacity 160ms var(--ease);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.975);
+  background: var(--surface-3);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn svg {
+  opacity: 0.9;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-hi);
+}
+
+.btn-primary svg {
+  opacity: 1;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.btn-ghost:active:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn-sm {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  border-radius: var(--r-sm);
+}
+
+/* Квадратная кнопка только со значком */
+.btn-icon {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  flex: none;
+  border-radius: var(--r-sm);
+}
+
+/**
+ * Крупная кнопка главного экрана: значок в плитке, название и пояснение
+ * столбиком, шеврон справа. Выравнивание по левому краю, а не по центру —
+ * так три кнопки подряд читаются как список, а не как три плаката.
+ */
+.btn-hero {
+  display: grid;
+  grid-template-columns: 44px 1fr 12px;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 12px 16px;
+  text-align: left;
+  border-radius: var(--r-lg);
+}
+
+.hero-ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.btn-primary .hero-ic {
+  background: rgba(255, 255, 255, 0.17);
+  color: #fff;
+}
+
+.btn-bots .hero-ic {
+  background: var(--bot-soft);
+  color: var(--bot);
+}
+
+.btn-rooms .hero-ic {
+  background: var(--civil-soft);
+  color: var(--civil);
+}
+
+.hero-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hero-title {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+}
+
+.btn-note {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.btn-primary .btn-note {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.hero-arrow {
+  color: var(--dim);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.btn-primary .hero-arrow {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Сколько человек в комнате — вместо аватарки в списке открытых комнат */
+.avatar.room-count {
+  background: var(--civil-soft);
+  color: var(--civil);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* ─────────── ввод ─────────── */
+
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: var(--r);
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  color: var(--text);
+  outline: none;
+  transition: border-color 160ms var(--ease), background 160ms var(--ease);
+}
+
+.input::placeholder {
+  color: var(--dim);
+}
+
+.input:focus {
+  border-color: var(--line-strong);
+  background: #04050799;
+}
+
+/* Код комнаты: моноширинный, крупный, с разрядкой — его диктуют вслух */
+.input-code {
+  height: 62px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  text-align: center;
+  font-family: 'SF Mono', ui-monospace, 'Roboto Mono', Menlo, monospace;
+}
+
+.input-code::placeholder {
+  color: var(--line-strong);
+}
+
+/* ─────────── шапки ─────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.topbar .btn-sm {
+  flex: none;
+}
+
+.topbar .spacer {
+  flex: 1;
+  min-height: 0;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill svg {
+  opacity: 0.75;
+}
+
+/**
+ * Переключатель языка стоит в потоке, а не поверх экрана: абсолютное
+ * положение накрывало кнопки в шапке лобби и игры.
+ */
+.lang-switch {
+  align-self: flex-end;
+  flex: none;
+  display: flex;
+  margin-bottom: 6px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.lang-switch button {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--dim);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  transition: color 160ms var(--ease), background 160ms var(--ease);
+}
+
+.lang-switch button.on {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* Заголовок фазы: значок, название, подпись, таймер */
+.phase-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 2px;
+  text-align: center;
+}
+
+.phase-icon {
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  opacity: 0.92;
+}
+
+.phase-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+}
+
+.timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.timer.urgent {
+  color: var(--accent);
+}
+
+.progress {
+  width: 100%;
+  max-width: 200px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.progress > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--muted);
+  transition: width 500ms linear;
+}
+
+.timer.urgent + .progress > i {
+  background: var(--accent);
+}
+
+/* ─────────── игроки ─────────── */
+
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  text-align: left;
+  transition: transform 120ms var(--ease), border-color 160ms var(--ease),
+    background 160ms var(--ease), opacity 200ms var(--ease);
+}
+
+.player.selectable {
+  border-color: var(--line-strong);
+}
+
+.player.selectable:active {
+  transform: scale(0.985);
+  background: var(--surface-2);
+}
+
+.player.selected {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.player.dead {
+  opacity: 0.42;
+}
+
+.player.me {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-bot {
+  background: var(--bot-soft);
+  color: var(--bot);
+}
+
+.player-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-sub {
+  font-size: 12.5px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip-bot {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--bot-soft);
+  color: var(--bot);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Значок роли. Цвет — единственное, что их различает: форма одна */
+.badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  background: var(--surface-3);
+  color: var(--muted);
+  border: 1px solid transparent;
+}
+
+.badge-mafia { background: var(--mafia-soft); color: var(--mafia); border-color: rgba(232, 70, 90, 0.24); }
+.badge-sheriff { background: var(--sheriff-soft); color: var(--sheriff); border-color: rgba(227, 162, 60, 0.24); }
+.badge-civil { background: var(--civil-soft); color: var(--civil); border-color: rgba(91, 155, 248, 0.24); }
+.badge-doctor { background: var(--doctor-soft); color: var(--doctor); border-color: rgba(51, 198, 164, 0.24); }
+.badge-host { background: var(--bot-soft); color: var(--bot); border-color: rgba(155, 135, 245, 0.24); }
+
+.badge-count {
+  min-width: 24px;
+  justify-content: center;
+  padding: 0 7px;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.badge-count svg {
+  opacity: 0.9;
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--good);
+}
+
+.dot.off {
+  background: var(--dim);
+}
+
+/* ─────────── карточка роли ─────────── */
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  text-align: center;
+  animation: reveal 420ms var(--spring) both;
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+.role-card.mafia { background: var(--mafia-soft); border-color: rgba(232, 70, 90, 0.3); }
+.role-card.sheriff { background: var(--sheriff-soft); border-color: rgba(227, 162, 60, 0.3); }
+.role-card.doctor { background: var(--doctor-soft); border-color: rgba(51, 198, 164, 0.3); }
+.role-card.civilian { background: var(--civil-soft); border-color: rgba(91, 155, 248, 0.3); }
+.role-card.host { background: var(--bot-soft); border-color: rgba(155, 135, 245, 0.3); }
+
+.role-emoji {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.24);
+  margin-bottom: 2px;
+}
+
+.role-card.mafia .role-emoji { color: var(--mafia); }
+.role-card.sheriff .role-emoji { color: var(--sheriff); }
+.role-card.doctor .role-emoji { color: var(--doctor); }
+.role-card.civilian .role-emoji { color: var(--civil); }
+.role-card.host .role-emoji { color: var(--bot); }
+
+.role-name {
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.role-card.mafia .role-name { color: var(--mafia); }
+.role-card.sheriff .role-name { color: var(--sheriff); }
+.role-card.doctor .role-name { color: var(--doctor); }
+.role-card.civilian .role-name { color: var(--civil); }
+.role-card.host .role-name { color: var(--bot); }
+
+.role-desc {
+  max-width: 300px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* ─────────── журнал ─────────── */
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.log-item {
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  border-left: 2px solid var(--line-strong);
+  background: var(--surface-2);
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--muted);
+  animation: log-in 240ms var(--ease) both;
+}
+
+@keyframes log-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.log-item.kill { border-left-color: var(--mafia); color: var(--text); }
+.log-item.exile { border-left-color: var(--sheriff); color: var(--text); }
+.log-item.peace { border-left-color: var(--doctor); }
+.log-item.vote { border-left-color: var(--civil); }
+.log-item.start { border-left-color: var(--line-strong); }
+.log-item.end { border-left-color: var(--good); color: var(--text); }
+
+/* ─────────── чат ─────────── */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.chat-msg {
+  padding: 7px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.chat-msg b {
+  color: var(--civil);
+  font-weight: 650;
+}
+
+.chat-msg.mafia b {
+  color: var(--mafia);
+}
+
+.chat-msg.from-bot {
+  background: var(--surface);
+}
+
+.chat-msg.from-bot b {
+  color: var(--bot);
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-form .input {
+  flex: 1;
+  min-height: 44px;
+}
+
+.chat-form .btn {
+  flex: none;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+/* ─────────── настройки ─────────── */
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.setting:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.setting-label {
+  font-size: 14.5px;
+  font-weight: 550;
+}
+
+.setting-label .dim {
+  display: block;
+  font-weight: 400;
+}
+
+.segmented {
+  display: flex;
+  flex: none;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+}
+
+.segmented button {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  color: var(--dim);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background 160ms var(--ease), color 160ms var(--ease);
+}
+
+.segmented button.on {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.segmented button:disabled {
+  opacity: 0.45;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+}
+
+.stepper button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--muted);
+  transition: background 140ms var(--ease), color 140ms var(--ease);
+}
+
+.stepper button:active:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.stepper button:disabled {
+  opacity: 0.3;
+}
+
+.stepper span {
+  min-width: 58px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.bots-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+}
+
+.bots-card .setting-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ─────────── служебное ─────────── */
+
+.banner {
+  padding: 11px 14px;
+  border-radius: var(--r);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.banner.info {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+/**
+ * Закреплённая кнопка ведущего. Фон размыт, а не сплошной: под ней
+ * продолжается список игроков, и обрубать его сплошной плашкой некрасиво.
+ */
+.sticky-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 16px calc(var(--safe-bottom) + 12px);
+  background: linear-gradient(180deg, rgba(10, 12, 17, 0), rgba(10, 12, 17, 0.92) 34%);
+  backdrop-filter: blur(14px);
+}
+
+.sticky-bottom .btn {
+  width: 100%;
+}
+
+.stat-tile {
+  padding: 14px;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  margin-top: 1px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.room-code {
+  font-family: 'SF Mono', ui-monospace, 'Roboto Mono', Menlo, monospace;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  line-height: 1.1;
+}
+
+.loader {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.win-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 26px 20px;
+  border-radius: var(--r-lg);
+  text-align: center;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.win-ic {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.win-title {
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+.win-sub {
+  max-width: 300px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.win-verdict {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.win-verdict.won {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.win-banner.mafia {
+  background: var(--mafia-soft);
+  border-color: rgba(232, 70, 90, 0.3);
+  color: var(--mafia);
+}
+
+.win-banner.civilians {
+  background: var(--good-soft);
+  border-color: rgba(61, 201, 127, 0.3);
+  color: var(--good);
+}
+
+/* ─────────── круглый стол ─────────── */
+
+.table-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.table {
+  --rx: 34%;
+  --ry: 37%;
+  --seat: 64px;
+  --face: 46px;
+
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1.02;
+  margin: 2px auto 0;
+}
+
+/* Десять и больше игроков — места ближе друг к другу, значит и сами уже */
+.table.dense {
+  --rx: 35%;
+  --ry: 38%;
+  --seat: 56px;
+  --face: 40px;
+}
+
+/* Сукно: ровный тёмный овал, он держит центр композиции */
+.table-felt {
+  position: absolute;
+  inset: 27% 26%;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), var(--shadow);
+}
+
+.table-center {
+  position: absolute;
+  inset: 27% 26%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  text-align: center;
+}
+
+.table-center .phase-icon {
+  opacity: 0.85;
+}
+
+.table-center .phase-title {
+  font-size: 17px;
+  line-height: 1.1;
+  letter-spacing: -0.3px;
+}
+
+.table-center .timer {
+  font-size: 12.5px;
+}
+
+.table-center .progress {
+  width: 76px;
+}
+
+.seat {
+  position: absolute;
+  width: var(--seat);
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: center;
+  transition: opacity 260ms var(--ease), transform 160ms var(--spring);
+  animation: seat-in 320ms var(--spring) both;
+}
+
+@keyframes seat-in {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.92); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.seat-face {
+  position: relative;
+  width: var(--face);
+  height: var(--face);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px var(--ring, var(--line)), var(--shadow-sm);
+  transition: box-shadow 200ms var(--ease);
+}
+
+.seat-face .avatar {
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+}
+
+.seat-name {
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.15;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Значок поверх аватарки: счёт голосов, цель мафии, укол доктора */
+.seat-mark {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.seat-mark svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Обрыв связи: место занято, но человека за ним сейчас нет */
+.seat-off {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dim);
+  border: 2px solid var(--bg);
+}
+
+.seat.dead {
+  opacity: 0.36;
+}
+
+.seat.dead .seat-face {
+  filter: grayscale(1);
+}
+
+.seat-x {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(6, 7, 10, 0.62);
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.seat.tone-mafia { --ring: var(--mafia); }
+.seat.tone-sheriff { --ring: var(--sheriff); }
+.seat.tone-doctor { --ring: var(--doctor); }
+.seat.tone-civil { --ring: var(--civil); }
+.seat.tone-good { --ring: var(--good); }
+
+.seat.me { --ring: var(--line-strong); }
+
+.seat.me .seat-name {
+  color: var(--text);
+}
+
+.seat.pick {
+  cursor: pointer;
+}
+
+.seat.pick .seat-face {
+  box-shadow: 0 0 0 2px var(--ring, var(--line-strong)), var(--shadow-sm);
+}
+
+.seat.pick:active {
+  transform: translate(-50%, -50%) scale(0.94);
+}
+
+.seat.sel {
+  --ring: var(--accent);
+}
+
+.seat.sel.tone-doctor {
+  --ring: var(--doctor);
+}
+
+.seat.sel .seat-face {
+  box-shadow: 0 0 0 3px var(--ring), var(--shadow);
+  animation: seat-pulse 1.6s var(--ease) infinite;
+}
+
+.seat.sel .seat-name {
+  color: var(--text);
+}
+
+@keyframes seat-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--ring), var(--shadow); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--ring) 40%, transparent), var(--shadow); }
+}
+
+.view-switch {
+  width: 34px;
+  padding: 0;
+  flex: none;
+}
+
+
+/* ─────────── знак игры и шапка главной ─────────── */
+
+/**
+ * Значок в круге вместо эмодзи: одинаковый размер на любом телефоне
+ * и цвет, которым можно управлять.
+ */
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+.brand-mark.small {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  color: var(--muted);
+}
+
+.hero-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─────────── шапка лобби ─────────── */
+
+.lobby-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lobby-code {
+  flex: 1;
+  min-width: 0;
+}
+
+.lobby-head .btn-sm {
+  flex: none;
+}
+
+/* ─────────── сводка ночи ─────────── */
+
+.announce-ic {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.announce-ic.mafia {
+  background: var(--mafia-soft);
+  color: var(--mafia);
+}
+
+.announce-ic.good {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+/* Значок-роль без подписи: в списке комнат места на слово нет */
+.badge-icon {
+  width: 24px;
+  padding: 0;
+  justify-content: center;
+  margin-left: 6px;
+}
+
+/* Пустое место в лобби рисуем пунктиром — видно, что его ещё можно занять */
+.player.empty {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.55;
+}
+
+/* ─────────── доступность ─────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

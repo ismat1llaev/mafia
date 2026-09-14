@@ -1,0 +1,50 @@
+# Описание сервиса для Render (https://render.com).
+#
+# Файл нужен, чтобы не заполнять форму руками: Render читает его при
+# создании Blueprint и сам заводит веб-сервис с нужными настройками.
+#
+# Почему один сервис, а не два: приложение раздаёт и мини-апп, и игровой
+# WebSocket, и принимает вебхук Telegram одним процессом. Разделять нечего.
+#
+# PUBLIC_URL здесь нарочно не задан — Render сам подставляет
+# RENDER_EXTERNAL_URL, а сервер её подхватывает. Одной переменной меньше.
+
+services:
+  - type: web
+    name: mafia
+    runtime: node
+    plan: free
+    region: frankfurt
+
+    # npm ci ставит зависимости строго по package-lock.json, а postinstall
+    # из package.json сразу собирает мини-апп в dist/
+    buildCommand: npm ci
+    startCommand: npm start
+
+    # Render считает сервис живым, пока этот адрес отвечает 200
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+
+      # Вебхук, а не polling: на одном процессе это дешевле и надёжнее
+      - key: BOT_MODE
+        value: webhook
+
+      # sync: false — значение вводится в панели Render и не хранится в git
+      - key: BOT_TOKEN
+        sync: false
+
+      - key: BOT_USERNAME
+        sync: false
+
+      # Render придумает случайную строку сам
+      - key: WEBHOOK_SECRET
+        generateValue: true
+
+      # Необязательные: канал проекта и автопубликация постов
+      - key: CHANNEL_URL
+        sync: false
+      - key: CHANNEL_ID
+        sync: false
