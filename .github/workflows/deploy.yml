@@ -1,0 +1,45 @@
+# Запускает сборку на Render после каждого пуша в main.
+#
+# Render сам новые коммиты не замечает: сервис подключён к репозиторию
+# по публичной ссылке, без приложения Render на GitHub, и его автодеплой
+# молчит. Поэтому сборку запускает GitHub — дёргает Deploy Hook сервиса,
+# секретную ссылку, по которой Render собирает последний коммит.
+#
+# Ссылка лежит в секрете репозитория RENDER_DEPLOY_HOOK_URL
+# (Settings → Secrets and variables → Actions). Пока секрета нет,
+# задача не падает, а предупреждает, что его нужно добавить.
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  # Кнопка "Run workflow" на вкладке Actions — пересобрать без нового коммита
+  workflow_dispatch:
+
+# Несколько пушей подряд — хватит одной, последней сборки
+concurrency:
+  group: render-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Запустить сборку на Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::Не задан секрет RENDER_DEPLOY_HOOK_URL — сборка на Render не запущена"
+            exit 0
+          fi
+          code=$(curl -sS -m 60 -o /tmp/body -w '%{http_code}' -X POST "$HOOK") || true
+          echo "ответ Render: ${code:-нет}"
+          cat /tmp/body 2>/dev/null || true
+          echo
+          if [ "${code:-0}" -lt 200 ] || [ "${code:-0}" -ge 300 ]; then
+            echo "::error::Render не принял запрос на сборку (код ${code:-нет})"
+            exit 1
+          fi
