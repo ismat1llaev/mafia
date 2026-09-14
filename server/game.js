@@ -217,14 +217,41 @@ export class Game {
 
   // ─────────────────────────── лобби ───────────────────────────
 
+  /**
+   * Имя и фото игрока за столом — те, что он указал в профиле.
+   *
+   * Посреди партии они не меняются: иначе можно переименоваться прямо
+   * во время голосования и запутать город. Новые имя и фото ждут конца
+   * партии и встают на место, когда комната возвращается в лобби.
+   */
+  setIdentity(id, { name, photo } = {}) {
+    const p = this.player(id);
+    if (!p || p.isBot) return { ok: false, code: 'not_in_room' };
+
+    const next = { name: name || p.name, photo: photo || null };
+    const same = next.name === p.name && next.photo === p.photo;
+
+    if (this.inProgress) {
+      p.pendingIdentity = same ? null : next;
+      return { ok: true, deferred: !same };
+    }
+
+    p.pendingIdentity = null;
+    if (!same) {
+      p.name = next.name;
+      p.photo = next.photo;
+      this.bump();
+    }
+    return { ok: true, deferred: false };
+  }
+
   addPlayer(user) {
     const existing = this.player(user.id);
     if (existing) {
       existing.connected = true;
       existing.disconnectedAt = null;
-      existing.name = user.name || existing.name;
       existing.username = user.username ?? existing.username;
-      existing.photo = user.photo ?? existing.photo;
+      this.setIdentity(user.id, user);
       this.bump();
       return { ok: true, rejoined: true };
     }
@@ -734,6 +761,12 @@ export class Game {
     this.chat = { day: [], mafia: [] };
     this.ready = new Set();
     for (const p of this.players) {
+      // Имя и фото, сменённые посреди партии, вступают в силу теперь
+      if (p.pendingIdentity) {
+        p.name = p.pendingIdentity.name;
+        p.photo = p.pendingIdentity.photo;
+        p.pendingIdentity = null;
+      }
       p.role = null;
       p.alive = true;
       p.deathReason = null;

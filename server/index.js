@@ -17,6 +17,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import { RoomManager } from './rooms.js';
 import { Store } from './store.js';
 import { verifyInitData, devUser } from './auth.js';
+import { Profiles } from './profile.js';
 import { webhookCallback } from 'grammy';
 import { buildBot, buildChannelBot, registerChannelCommands, RULES_TEXT } from './bot.js';
 import { Publisher, channelNameFrom } from './publisher.js';
@@ -102,10 +103,12 @@ if (!BOT_TOKEN) {
 
 const store = new Store(DB_PATH);
 const rooms = new RoomManager({ store });
+const profiles = new Profiles();
 
 const app = Fastify({ logger: false, trustProxy: true });
 await app.register(fastifyWebsocket, {
-  options: { maxPayload: 64 * 1024 },
+  // Фото профиля приезжает через сокет: до ~140 КБ в base64
+  options: { maxPayload: 256 * 1024 },
 });
 
 // ─────────────────────────── HTTP ───────────────────────────
@@ -127,6 +130,21 @@ app.get('/api/config', async () => ({
   channelUrl: CHANNEL_URL,
 }));
 
+// Фото из удостоверений. В адресе хеш содержимого, поэтому ответ можно
+// кешировать навсегда: новое фото — это новый адрес.
+app.get('/api/photo/:file', async (req, reply) => {
+  const file = String(req.params.file || '');
+  const bytes = /^[0-9a-f]{24}[.]jpg$/.test(file) ? profiles.photo(file.slice(0, 24)) : null;
+  if (!bytes) return reply.code(404).send({ error: 'not found' });
+  return reply
+    .header('Cache-Control', 'public, max-age=31536000, immutable')
+    // Картинку прислал игрок: запрещаем браузеру угадывать тип и что-либо исполнять
+    .header('X-Content-Type-Options', 'nosniff')
+    .header('Content-Security-Policy', "default-src 'none'; sandbox")
+    .type('image/jpeg')
+    .send(bytes);
+});
+
 // ─────────────────────────── WebSocket ───────────────────────────
 
 /**
@@ -135,9 +153,13 @@ app.get('/api/config', async () => ({
  */
 app.register(async (instance) => {
   instance.get('/ws', { websocket: true }, (socket) => {
-    let user = null;
+    let user = null; // как игрок записан в Telegram
     let roomCode = null;
     let alive = true;
+    let lastProfileAt = 0;
+
+    // Как игрок выглядит за столом: имя и фото из его удостоверения
+    const me = () => profiles.identity(user);
 
     // fatal — клиенту не нужно переподключаться, проблема не во связи
     const fail = (code, params = null, fatal = false) => {
@@ -157,11 +179,11 @@ app.register(async (instance) => {
     const enterRoom = (room, rejoined) => {
       roomCode = room.game.code;
       rooms.attachSocket(room, user.id, socket);
-      if (!user.isDev) store.touch(user.id, user.name);
+      if (!user.isDev) store.touch(user.id, me().name);
       send({ t: 'joined', code: room.game.code, rejoined: !!rejoined });
       rooms.broadcast(room);
       // Не ждём отправки: если Telegram ответит с задержкой, игра не должна тормозить
-      ensureRulesPinned(user).catch(() => {});
+      ensureRulesPinned(me()).catch(() => {});
     };
 
     // Пинги, чтобы мобильный Telegram не рвал соединение молча
@@ -201,12 +223,20 @@ app.register(async (instance) => {
         } else {
           return fail(res.code, null, true);
         }
-        send({ t: 'auth_ok', user, stats: store.statsFor(user.id) });
+        // Профиль с устройства: сервер мог перезапуститься и забыть его.
+        // Негодный профиль вход не ломает — игрок просто зайдёт без него.
+        if (msg.profile) profiles.save(user.id, msg.profile);
+        send({
+          t: 'auth_ok',
+          user: me(),
+          stats: store.statsFor(user.id),
+          profile: profiles.ownerView(user.id),
+        });
 
         // Автовход по коду из ссылки или из start_param
         const auto = (msg.code || res.startParam || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (auto) {
-          const join = rooms.joinRoom(user, auto);
+          const join = rooms.joinRoom(me(), auto);
           if (join.ok) enterRoom(rooms.getRoom(auto), join.rejoined);
           else send({ t: 'join_failed', reason: join.code, room: auto });
         }
@@ -222,7 +252,7 @@ app.register(async (instance) => {
 
         case 'create': {
           if (currentRoom()) rooms.leaveRoom(user.id, roomCode);
-          const { code } = rooms.createRoom(user, sanitizeSettings(msg.settings));
+          const { code } = rooms.createRoom(me(), sanitizeSettings(msg.settings));
           enterRoom(rooms.getRoom(code), false);
           return;
         }
@@ -231,7 +261,7 @@ app.register(async (instance) => {
         case 'play_bots': {
           if (currentRoom()) rooms.leaveRoom(user.id, roomCode);
           const wanted = Number(msg.players);
-          const res = rooms.createSoloRoom(user, {
+          const res = rooms.createSoloRoom(me(), {
             players: Number.isFinite(wanted) ? wanted : SOLO_PLAYERS,
             settings: sanitizeSettings(msg.settings),
           });
@@ -243,9 +273,30 @@ app.register(async (instance) => {
         case 'join': {
           const code = String(msg.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
           if (code.length < 4) return fail('bad_code');
-          const res = rooms.joinRoom(user, code);
+          const res = rooms.joinRoom(me(), code);
           if (!res.ok) return fail(res.code, res.params);
           enterRoom(rooms.getRoom(code), res.rejoined);
+          return;
+        }
+
+        // Удостоверение: имя, фамилия, возраст, пол и фото
+        case 'profile': {
+          const now = Date.now();
+          if (now - lastProfileAt < 1000) return fail('profile_too_often');
+          lastProfileAt = now;
+
+          const res = profiles.save(user.id, msg.profile, { force: true, now });
+          if (!res.ok) return fail(res.code, res.params);
+
+          const identity = me();
+          const room = currentRoom();
+          let deferred = false;
+          if (room) {
+            deferred = !!room.game.setIdentity(user.id, identity).deferred;
+            rooms.broadcast(room);
+          }
+          if (!user.isDev) store.touch(user.id, identity.name);
+          send({ t: 'profile_ok', user: identity, profile: profiles.ownerView(user.id), deferred });
           return;
         }
 

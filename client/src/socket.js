@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { tg } from './tg.js';
+import {
+  loadCloudProfile,
+  loadLocalProfile,
+  normalizeProfile,
+  saveCloudProfile,
+  saveLocalProfile,
+} from './profile.js';
 
 const RECONNECT_BASE = 800;
 const RECONNECT_MAX = 8000;
@@ -50,6 +57,10 @@ function devIdentity() {
  *
  * Само переподключается при обрыве и заново авторизуется: игрок опознаётся
  * по Telegram id, поэтому после потери связи он возвращается на своё место.
+ *
+ * При каждом входе приложение заодно присылает удостоверение игрока:
+ * сервер мог перезапуститься и забыть его. Из трёх копий — на устройстве,
+ * в облаке Telegram и на сервере — побеждает сохранённая позже всех.
  */
 export function useGameSocket({ autoCode }) {
   const [status, setStatus] = useState('connecting'); // connecting | online | offline | rejected
@@ -60,12 +71,33 @@ export function useGameSocket({ autoCode }) {
   const [joinError, setJoinError] = useState(null);
   const [rooms, setRooms] = useState(null);
   const [clockSkew, setClockSkew] = useState(0);
+  const [profile, setProfile] = useState(loadLocalProfile);
+  // Ответ сервера на сохранение профиля: {at, deferred}
+  const [profileAck, setProfileAck] = useState(null);
 
   const wsRef = useRef(null);
   const attemptsRef = useRef(0);
   const closedRef = useRef(false);
   const autoCodeRef = useRef(autoCode || recallRoom());
   const inRoomRef = useRef(null);
+  const profileRef = useRef(profile);
+  const authedRef = useRef(false);
+
+  /** Запомнить профиль везде, где он хранится на устройстве. */
+  const keepProfile = useCallback((next, { cloud = true } = {}) => {
+    profileRef.current = next;
+    setProfile(next);
+    saveLocalProfile(next);
+    if (cloud) saveCloudProfile(next);
+  }, []);
+
+  /** Отправить профиль серверу, если уже можно: до входа сервер его не примет. */
+  const sendProfile = useCallback(() => {
+    const ws = wsRef.current;
+    if (!authedRef.current || ws?.readyState !== WebSocket.OPEN || !profileRef.current) return false;
+    ws.send(JSON.stringify({ t: 'profile', profile: profileRef.current }));
+    return true;
+  }, []);
 
   const connect = useCallback(() => {
     if (closedRef.current) return;
@@ -75,11 +107,13 @@ export function useGameSocket({ autoCode }) {
 
     ws.onopen = () => {
       attemptsRef.current = 0;
+      authedRef.current = false;
       const payload = {
         t: 'auth',
         initData: tg?.initData || '',
         // код из ссылки нужен только при самом первом входе
         code: inRoomRef.current || autoCodeRef.current || null,
+        profile: profileRef.current || null,
       };
       if (!tg?.initData) {
         const dev = devIdentity();
@@ -93,11 +127,29 @@ export function useGameSocket({ autoCode }) {
       try { msg = JSON.parse(ev.data); } catch { return; }
 
       switch (msg.t) {
-        case 'auth_ok':
+        case 'auth_ok': {
+          authedRef.current = true;
           setUser(msg.user);
           setStats(msg.stats);
           setStatus('online');
           setError(null);
+
+          // Копия на сервере свежее — значит, профиль правили с другого устройства.
+          // Своя свежее — сервер её не принял при входе или облако успело раньше.
+          const serverAt = msg.profile?.updatedAt || 0;
+          const localAt = profileRef.current?.updatedAt || 0;
+          if (serverAt > localAt) keepProfile(normalizeProfile(msg.profile));
+          else if (localAt > serverAt) sendProfile();
+          break;
+        }
+        case 'profile_ok':
+          setUser(msg.user);
+          if (msg.profile) {
+            const next = normalizeProfile(msg.profile);
+            // Облако уже знает эту версию, если сервер не поправил отметку времени
+            keepProfile(next, { cloud: next.updatedAt !== profileRef.current?.updatedAt });
+          }
+          setProfileAck({ at: Date.now(), deferred: !!msg.deferred });
           break;
         case 'state':
           setState(msg.state);
@@ -125,12 +177,12 @@ export function useGameSocket({ autoCode }) {
           break;
         case 'error':
           // Сервер присылает код, а не готовую фразу: язык выбирает приложение
-          setError({ code: msg.code, params: msg.params });
+          setError({ code: msg.code, params: msg.params, at: Date.now() });
           break;
         case 'fatal':
           // Сервер отказал окончательно — переподключаться бессмысленно
           closedRef.current = true;
-          setError({ code: msg.code, params: msg.params });
+          setError({ code: msg.code, params: msg.params, at: Date.now() });
           setStatus('rejected');
           break;
         case 'ping':
@@ -142,6 +194,7 @@ export function useGameSocket({ autoCode }) {
     };
 
     ws.onclose = () => {
+      authedRef.current = false;
       // Об отказе авторизации сервер сообщает сообщением 'fatal' — оно
       // выставляет closedRef, поэтому обычный обрыв мы не спутаем с отказом.
       if (closedRef.current) return;
@@ -165,13 +218,30 @@ export function useGameSocket({ autoCode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Облако Telegram отвечает не сразу — сверяем копии, когда оно ответит
+  useEffect(() => {
+    let cancelled = false;
+    loadCloudProfile().then((fromCloud) => {
+      if (cancelled) return;
+      const cloudAt = fromCloud?.updatedAt || 0;
+      const localAt = profileRef.current?.updatedAt || 0;
+      if (cloudAt > localAt) {
+        keepProfile(fromCloud, { cloud: false });
+        sendProfile();
+      } else if (localAt > cloudAt) {
+        saveCloudProfile(profileRef.current);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [keepProfile, sendProfile]);
+
   const sendRaw = useCallback((payload) => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(payload));
       return true;
     }
-    setError({ code: 'no_connection', params: null });
+    setError({ code: 'no_connection', params: null, at: Date.now() });
     return false;
   }, []);
 
@@ -192,7 +262,30 @@ export function useGameSocket({ autoCode }) {
     chat: (text) => sendRaw({ t: 'chat', text }),
     settings: (patch) => sendRaw({ t: 'settings', settings: patch }),
     kick: (userId) => sendRaw({ t: 'kick', userId }),
+    /**
+     * Сохранить удостоверение. На устройстве оно сохраняется сразу;
+     * false значит, что до сервера оно доедет при следующем входе.
+     */
+    saveProfile: (draft) => {
+      const next = normalizeProfile({ ...draft, updatedAt: Date.now() });
+      keepProfile(next);
+      if (!authedRef.current) return false;
+      return sendRaw({ t: 'profile', profile: next });
+    },
   };
 
-  return { status, state, user, stats, error, joinError, rooms, clockSkew, actions, clearError: () => setError(null) };
+  return {
+    status,
+    state,
+    user,
+    stats,
+    error,
+    joinError,
+    rooms,
+    clockSkew,
+    profile,
+    profileAck,
+    actions,
+    clearError: () => setError(null),
+  };
 }

@@ -17,7 +17,7 @@ import { DICTS, LANGS, translate } from '../client/src/dict.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const read = (f) => fs.readFileSync(path.join(HERE, f), 'utf8');
-const SERVER = ['game.js', 'rooms.js', 'auth.js', 'index.js'].map(read).join('\n');
+const SERVER = ['game.js', 'rooms.js', 'auth.js', 'index.js', 'profile.js'].map(read).join('\n');
 
 /** Все коды из конструкций вида code: 'xxx' и fail('xxx'). */
 function errorCodes() {

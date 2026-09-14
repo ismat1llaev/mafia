@@ -339,6 +339,34 @@ const ru = {
   'err.auth_expired': 'Данные авторизации устарели — перезапустите приложение.',
   'err.auth_bad_profile': 'Не удалось прочитать профиль.',
   'err.auth_no_user': 'В данных нет пользователя.',
+  'err.photo_bad': 'Это фото не подошло. Попробуйте другое.',
+  'err.photo_too_big': 'Фото слишком большое. Выберите другое.',
+  'err.profile_bad': 'Не удалось сохранить профиль.',
+  'err.profile_too_often': 'Слишком часто — подождите секунду.',
+
+  // Удостоверение игрока: оформлено как карточка мафиози
+  'profile.open': 'Открыть удостоверение',
+  'profile.badgeEmpty': 'Профиль',
+  'profile.brand': 'МАФИЯ',
+  'profile.band': 'Удостоверение личности',
+  'profile.firstName': 'Имя',
+  'profile.lastName': 'Фамилия',
+  'profile.age': 'Возраст',
+  'profile.gender': 'Пол',
+  'profile.male': 'Муж',
+  'profile.female': 'Жен',
+  'profile.addPhoto': 'Добавить фото',
+  'profile.changePhoto': 'Сменить фото',
+  'profile.removePhoto': 'Убрать фото',
+  'profile.photoError': 'Не удалось открыть фото. Попробуйте другое.',
+  'profile.hint': 'Имя и фото увидят все за столом. Возраст и пол видны только вам.',
+  'profile.save': 'Сохранить',
+  'profile.saving': 'Сохраняю…',
+  'profile.saved': 'Сохранено',
+  'profile.deferred': 'Сохранено. За столом имя и фото сменятся после этой партии.',
+  'profile.close': 'Закрыть',
+
+  'splash.title': 'Добро пожаловать в мафию',
 };
 
 const en = {
@@ -660,6 +688,34 @@ const en = {
   'err.auth_expired': 'Login data has expired — reopen the app.',
   'err.auth_bad_profile': 'Could not read the profile.',
   'err.auth_no_user': 'No user in the login data.',
+  'err.photo_bad': 'That photo did not work. Try another one.',
+  'err.photo_too_big': 'The photo is too large. Pick another one.',
+  'err.profile_bad': 'Could not save the profile.',
+  'err.profile_too_often': 'Too fast — wait a second.',
+
+  // The player's ID card, styled as a mafioso's papers
+  'profile.open': 'Open your ID card',
+  'profile.badgeEmpty': 'Profile',
+  'profile.brand': 'MAFIA',
+  'profile.band': 'Identification card',
+  'profile.firstName': 'Name',
+  'profile.lastName': 'Surname',
+  'profile.age': 'Age',
+  'profile.gender': 'Sex',
+  'profile.male': 'Male',
+  'profile.female': 'Female',
+  'profile.addPhoto': 'Add photo',
+  'profile.changePhoto': 'Change photo',
+  'profile.removePhoto': 'Remove photo',
+  'profile.photoError': 'Could not open that photo. Try another one.',
+  'profile.hint': 'Everyone at the table sees your name and photo. Age and sex are visible only to you.',
+  'profile.save': 'Save',
+  'profile.saving': 'Saving…',
+  'profile.saved': 'Saved',
+  'profile.deferred': 'Saved. Your name and photo at the table will change after this game.',
+  'profile.close': 'Close',
+
+  'splash.title': 'Welcome to the Mafia',
 };
 
 export const DICTS = { ru, en };

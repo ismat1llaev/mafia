@@ -321,3 +321,11 @@ export const IconCrosshair = (p) => (
     <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
   </Svg>
 );
+
+/** Фото профиля — фотоаппарат. */
+export const IconCamera = (p) => (
+  <Svg {...p}>
+    <path d="M3.4 8.6a2 2 0 0 1 2-2h2.2l1.5-2.2h5.8l1.5 2.2h2.2a2 2 0 0 1 2 2v9.2a2 2 0 0 1-2 2H5.4a2 2 0 0 1-2-2Z" />
+    <circle cx="12" cy="12.8" r="3.6" />
+  </Svg>
+);

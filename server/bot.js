@@ -36,6 +36,9 @@ export const RULES_TEXT = [
   '_Обсуждать удобнее голосом: включите звонок в Telegram и играйте параллельно._',
 ].join('\n');
 
+/** Имена игроки задают себе сами — в HTML-разметке сообщения их нужно экранировать. */
+const escapeHtml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 export function buildBot({
   token, publicUrl, botUsername, appShortName, channelUrl, store,
   isOwner = async () => false,
@@ -144,8 +147,8 @@ export function buildBot({
       return;
     }
     const medals = ['🥇', '🥈', '🥉'];
-    const lines = top.map((u, i) => `${medals[i] || `${i + 1}.`} ${u.name || 'Игрок'} — ${u.winRate}% (${u.games} партий)`);
-    await ctx.reply(['*Топ игроков*', '', ...lines].join('\n'), { parse_mode: 'Markdown' });
+    const lines = top.map((u, i) => `${medals[i] || `${i + 1}.`} ${escapeHtml(u.name || 'Игрок')} — ${u.winRate}% (${u.games} партий)`);
+    await ctx.reply(['<b>Топ игроков</b>', '', ...lines].join('\n'), { parse_mode: 'HTML' });
   });
 
   bot.command('help', async (ctx) => {
